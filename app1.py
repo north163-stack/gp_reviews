@@ -30,7 +30,7 @@ def init_gemini(api_key):
     try:
         genai.configure(api_key=api_key)
         # 兼容性处理：如果 flash 不可用，自动降级到 pro
-        return genai.GenerativeModel('gemini-1.5-flash') 
+        return genai.GenerativeModel('gemini-2.5-flash') 
     except Exception as e:
         st.error(f"Gemini 初始化失败: {e}")
         return None
