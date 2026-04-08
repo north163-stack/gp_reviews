@@ -155,7 +155,8 @@ if uploaded_file is not None:
                 with st.spinner('AI 正在交叉验证数据，生成高管级汇报纪要...'):
                     report_content = get_zeus_style_insight(gemini_model, df)
                     st.success("报告生成完毕")
-                    st.markdown(f"<div style='background-color: #ffffff; padding: 25px; border-radius: 10px; border: 1px solid #e0e0e0;'>{report_content}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='background-color: rgba(128, 128, 128, 0.1); padding: 25px; border-radius: 10px; border: 1px solid rgba(128, 128, 128, 0.2);'>{report_content}</div>", unsafe_allow_html=True)
+                    # st.markdown(f"<div style='background-color: #ffffff; padding: 25px; border-radius: 10px; border: 1px solid #e0e0e0;'>{report_content}</div>", unsafe_allow_html=True)
 
         # --- 模块 4: 词云辅助 (隐藏在折叠面板中，保持主报告清爽) ---
         with st.expander("👁️ 查看原始文本语义聚类 (词云)"):
