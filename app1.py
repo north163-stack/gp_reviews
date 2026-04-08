@@ -29,7 +29,7 @@ def init_gemini(api_key):
     if not api_key: return None
     try:
         genai.configure(api_key=api_key)
-        return genai.GenerativeModel('gemini-pro') 
+        return genai.GenerativeModel('gemini-2.5-flash') 
     except Exception as e:
         st.error(f"Gemini 初始化失败: {e}")
         return None
