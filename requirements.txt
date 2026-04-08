@@ -2,5 +2,6 @@ streamlit
 pandas
 matplotlib
 wordcloud
+plotly
 google-generativeai
 textblob
