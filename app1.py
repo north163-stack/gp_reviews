@@ -155,99 +155,176 @@ else:
                     st.success("报告生成完毕")
                     # 已修复深色模式看不见文字的问题
                     st.markdown(f"<div style='background-color: rgba(128, 128, 128, 0.1); padding: 25px; border-radius: 10px; border: 1px solid rgba(128, 128, 128, 0.2);'>{report_content}</div>", unsafe_allow_html=True)
-
-        # --- 模块 4: 词云辅助 ---
-        with st.expander("👁️ 查看原始文本语义聚类 (词云)"):
-            c1, c2 = st.columns(2)
-            with c1:
-                neg_words = " ".join(df[df['true_sentiment'] == 'Negative']['content'].tolist())
-                if neg_words:
-                    wordcloud_neg = WordCloud(width=600, height=300, background_color='white', colormap='Reds').generate(re.sub(r'[^a-z\s]', '', neg_words.lower()))
-                    fig_n, ax_n = plt.subplots(figsize=(8, 4))
-                    ax_n.imshow(wordcloud_neg)
-                    ax_n.axis('off')
-                    st.pyplot(fig_n)
-            with c2:
-                pos_words = " ".join(df[df['true_sentiment'] == 'Positive']['content'].tolist())
-                if pos_words:
-                    wordcloud_pos = WordCloud(width=600, height=300, background_color='white', colormap='Greens').generate(re.sub(r'[^a-z\s]', '', pos_words.lower()))
-                    fig_p, ax_p = plt.subplots(figsize=(8, 4))
-                    ax_p.imshow(wordcloud_pos)
-                    ax_p.axis('off')
-                    st.pyplot(fig_p)
-
-# --- 模块 5: 原始数据下钻与动态筛选 ---
-        st.markdown('<div class="section-title">🔍 原始文本数据下钻</div>', unsafe_allow_html=True)
+# --- 模块 4: 词云辅助 (已取消折叠) ---
+        st.markdown('<div class="section-title">👁️ 原始文本语义聚类 (词云)</div>', unsafe_allow_html=True)
         
-        # 默认展开，方便老板和运营直接看到
-        with st.expander("点击展开查看具体玩家评论 (支持组合筛选与下载)", expanded=True):
-            
-            # 使用三栏设计，增加关键词检索，提升实用性
-            filter_c1, filter_c2, filter_c3 = st.columns([1, 1, 1.5])
-            
-            with filter_c1:
-                # 星级筛选器
-                score_filter = st.multiselect(
-                    "⭐ 筛选星级 (Score):", 
-                    options=[5, 4, 3, 2, 1], 
-                    default=[1, 2] 
-                )
-                
-            with filter_c2:
-                # 版本号筛选器
-                available_versions = df['reviewCreatedVersion'].dropna().unique().tolist()
-                version_filter = st.multiselect(
-                    "📱 筛选应用版本 (Version):", 
-                    options=available_versions,
-                    default=[] 
-                )
-                
-            with filter_c3:
-                # 新增：关键词检索（支持多词或正则，找 bug 神器）
-                search_kw = st.text_input("🔑 关键词检索 (例如输入 '闪退' 或 '黑屏'):", "")
+        c1, c2 = st.columns(2)
+        with c1:
+            st.subheader("负面高频词")
+            neg_words = " ".join(df[df['true_sentiment'] == 'Negative']['content'].tolist())
+            if neg_words:
+                wordcloud_neg = WordCloud(width=600, height=300, background_color='white', colormap='Reds').generate(re.sub(r'[^a-z\s]', '', neg_words.lower()))
+                fig_n, ax_n = plt.subplots(figsize=(8, 4))
+                ax_n.imshow(wordcloud_neg)
+                ax_n.axis('off')
+                st.pyplot(fig_n)
+            else:
+                st.info("暂无足够的负面评价生成词云")
 
-            # 核心动作：根据用户的选择，动态过滤数据
-            filtered_df = df[df['score'].isin(score_filter)]
-            
-            if version_filter:
-                filtered_df = filtered_df[filtered_df['reviewCreatedVersion'].isin(version_filter)]
-                
-            if search_kw:
-                # 使用 case=False 忽略大小写，na=False 处理空值
-                filtered_df = filtered_df[filtered_df['content'].str.contains(search_kw, case=False, na=False)]
-            
-            # 新增：按时间倒序排列，保证看到的是最新反馈
-            if 'at' in filtered_df.columns:
-                filtered_df = filtered_df.sort_values(by='at', ascending=False)
+        with c2:
+            st.subheader("正面高频词")
+            pos_words = " ".join(df[df['true_sentiment'] == 'Positive']['content'].tolist())
+            if pos_words:
+                wordcloud_pos = WordCloud(width=600, height=300, background_color='white', colormap='Greens').generate(re.sub(r'[^a-z\s]', '', pos_words.lower()))
+                fig_p, ax_p = plt.subplots(figsize=(8, 4))
+                ax_p.imshow(wordcloud_pos)
+                ax_p.axis('off')
+                st.pyplot(fig_p)
+            else:
+                st.info("暂无足够的正面评价生成词云")
 
-            # 顶部增加数据量提示（动态反馈）
-            st.caption(f"当前筛选条件下，共找到 **{len(filtered_df)}** 条玩家反馈。")
-            
-            # 展示最终的数据表 (补全 height，并引入 column_config 让表格更炫酷)
-            st.dataframe(
-                filtered_df[['at', 'score', 'content', 'reviewCreatedVersion']], 
-                use_container_width=True,
-                height=400, # 补全你的代码：固定高度，超出内部滚动
-                hide_index=True, # 隐藏默认的数字索引，让表格更干净
-                column_config={
-                    "at": st.column_config.DatetimeColumn(
-                        "评论时间",
-                        format="YYYY-MM-DD HH:mm", # 格式化时间，去掉秒等冗余信息
-                    ),
-                    "score": st.column_config.NumberColumn(
-                        "评分",
-                        help="玩家给出的星级评分",
-                        format="%d ⭐", # 炫酷点：将数字直接渲染为带有星星符号的文本
-                    ),
-                    "content": st.column_config.TextColumn(
-                        "玩家原始评论",
-                        width="large", # 给文本列分配最大宽度
-                    ),
-                    "reviewCreatedVersion": st.column_config.TextColumn(
-                        "发生版本"
-                    )
-                }
+        # --- 模块 5: 原始数据下钻与动态筛选 (已取消折叠) ---
+        st.markdown('<div class="section-title">🔍 原始文本数据下钻</div>', unsafe_allow_html=True)
+        st.info("支持组合筛选与下载，按时间倒序排列")
+
+        # 筛选器布局
+        filter_c1, filter_c2, filter_c3 = st.columns([1, 1, 1.5])
+        
+        with filter_c1:
+            score_filter = st.multiselect(
+                "⭐ 筛选星级 (Score):", 
+                options=[5, 4, 3, 2, 1], 
+                default=[1, 2] 
             )
+            
+        with filter_c2:
+            available_versions = df['reviewCreatedVersion'].dropna().unique().tolist()
+            version_filter = st.multiselect(
+                "📱 筛选应用版本 (Version):", 
+                options=available_versions,
+                default=[] 
+            )
+            
+        with filter_c3:
+            search_kw = st.text_input("🔑 关键词检索 (例如输入 '闪退' 或 '黑屏'):", "")
+
+        # 动态过滤数据
+        filtered_df = df[df['score'].isin(score_filter)]
+        if version_filter:
+            filtered_df = filtered_df[filtered_df['reviewCreatedVersion'].isin(version_filter)]
+        if search_kw:
+            filtered_df = filtered_df[filtered_df['content'].str.contains(search_kw, case=False, na=False)]
+        if 'at' in filtered_df.columns:
+            filtered_df = filtered_df.sort_values(by='at', ascending=False)
+
+        st.caption(f"当前筛选条件下，共找到 **{len(filtered_df)}** 条玩家反馈。")
+        
+        # 数据表渲染
+        st.dataframe(
+            filtered_df[['at', 'score', 'content', 'reviewCreatedVersion']], 
+            use_container_width=True,
+            height=600, # 既然不折叠了，可以适当增加高度方便查阅
+            hide_index=True, 
+            column_config={
+                "at": st.column_config.DatetimeColumn("评论时间", format="YYYY-MM-DD HH:mm"),
+                "score": st.column_config.NumberColumn("评分", format="%d ⭐"),
+                "content": st.column_config.TextColumn("玩家原始评论", width="large"),
+                "reviewCreatedVersion": st.column_config.TextColumn("发生版本")
+            }
+        )
+
+#         # --- 模块 4: 词云辅助 ---
+#         with st.expander("👁️ 查看原始文本语义聚类 (词云)"):
+#             c1, c2 = st.columns(2)
+#             with c1:
+#                 neg_words = " ".join(df[df['true_sentiment'] == 'Negative']['content'].tolist())
+#                 if neg_words:
+#                     wordcloud_neg = WordCloud(width=600, height=300, background_color='white', colormap='Reds').generate(re.sub(r'[^a-z\s]', '', neg_words.lower()))
+#                     fig_n, ax_n = plt.subplots(figsize=(8, 4))
+#                     ax_n.imshow(wordcloud_neg)
+#                     ax_n.axis('off')
+#                     st.pyplot(fig_n)
+#             with c2:
+#                 pos_words = " ".join(df[df['true_sentiment'] == 'Positive']['content'].tolist())
+#                 if pos_words:
+#                     wordcloud_pos = WordCloud(width=600, height=300, background_color='white', colormap='Greens').generate(re.sub(r'[^a-z\s]', '', pos_words.lower()))
+#                     fig_p, ax_p = plt.subplots(figsize=(8, 4))
+#                     ax_p.imshow(wordcloud_pos)
+#                     ax_p.axis('off')
+#                     st.pyplot(fig_p)
+
+# # --- 模块 5: 原始数据下钻与动态筛选 ---
+#         st.markdown('<div class="section-title">🔍 原始文本数据下钻</div>', unsafe_allow_html=True)
+        
+#         # 默认展开，方便老板和运营直接看到
+#         with st.expander("点击展开查看具体玩家评论 (支持组合筛选与下载)", expanded=True):
+            
+#             # 使用三栏设计，增加关键词检索，提升实用性
+#             filter_c1, filter_c2, filter_c3 = st.columns([1, 1, 1.5])
+            
+#             with filter_c1:
+#                 # 星级筛选器
+#                 score_filter = st.multiselect(
+#                     "⭐ 筛选星级 (Score):", 
+#                     options=[5, 4, 3, 2, 1], 
+#                     default=[1, 2] 
+#                 )
+                
+#             with filter_c2:
+#                 # 版本号筛选器
+#                 available_versions = df['reviewCreatedVersion'].dropna().unique().tolist()
+#                 version_filter = st.multiselect(
+#                     "📱 筛选应用版本 (Version):", 
+#                     options=available_versions,
+#                     default=[] 
+#                 )
+                
+#             with filter_c3:
+#                 # 新增：关键词检索（支持多词或正则，找 bug 神器）
+#                 search_kw = st.text_input("🔑 关键词检索 (例如输入 '闪退' 或 '黑屏'):", "")
+
+#             # 核心动作：根据用户的选择，动态过滤数据
+#             filtered_df = df[df['score'].isin(score_filter)]
+            
+#             if version_filter:
+#                 filtered_df = filtered_df[filtered_df['reviewCreatedVersion'].isin(version_filter)]
+                
+#             if search_kw:
+#                 # 使用 case=False 忽略大小写，na=False 处理空值
+#                 filtered_df = filtered_df[filtered_df['content'].str.contains(search_kw, case=False, na=False)]
+            
+#             # 新增：按时间倒序排列，保证看到的是最新反馈
+#             if 'at' in filtered_df.columns:
+#                 filtered_df = filtered_df.sort_values(by='at', ascending=False)
+
+#             # 顶部增加数据量提示（动态反馈）
+#             st.caption(f"当前筛选条件下，共找到 **{len(filtered_df)}** 条玩家反馈。")
+            
+#             # 展示最终的数据表 (补全 height，并引入 column_config 让表格更炫酷)
+#             st.dataframe(
+#                 filtered_df[['at', 'score', 'content', 'reviewCreatedVersion']], 
+#                 use_container_width=True,
+#                 height=400, # 补全你的代码：固定高度，超出内部滚动
+#                 hide_index=True, # 隐藏默认的数字索引，让表格更干净
+#                 column_config={
+#                     "at": st.column_config.DatetimeColumn(
+#                         "评论时间",
+#                         format="YYYY-MM-DD HH:mm", # 格式化时间，去掉秒等冗余信息
+#                     ),
+#                     "score": st.column_config.NumberColumn(
+#                         "评分",
+#                         help="玩家给出的星级评分",
+#                         format="%d ⭐", # 炫酷点：将数字直接渲染为带有星星符号的文本
+#                     ),
+#                     "content": st.column_config.TextColumn(
+#                         "玩家原始评论",
+#                         width="large", # 给文本列分配最大宽度
+#                     ),
+#                     "reviewCreatedVersion": st.column_config.TextColumn(
+#                         "发生版本"
+#                     )
+#                 }
+#             )
 
 
 
