@@ -154,19 +154,67 @@ else:
             st.markdown("<br><br>", unsafe_allow_html=True)
             st.dataframe(weekly_trend.rename(columns={'week':'周次', 'avg_score':'平均评分', 'review_count':'评价数量'}), hide_index=True)
 
-        # --- 模块 3: 🤖 AI 深度洞察与战略规划 ---
+# --- 模块 3: 🤖 AI 深度洞察与战略规划 ---
         st.markdown('<div class="section-title">🤖 AI 深度洞察与战略建议</div>', unsafe_allow_html=True)
         
-        # ⚠️ 注意：这里依然保留了按钮触发，避免每次刷新网页都耗费 API Token
-        if st.button("⚡ 立即生成专家级体检报告", type="primary"):
+        # 1. 初始化会话缓存 (Session State)
+        if "ai_report_cache" not in st.session_state:
+            st.session_state.ai_report_cache = None
+
+        # 2. 并排设置操作按钮
+        btn_col1, btn_col2 = st.columns([2, 8])
+        with btn_col1:
+            # 如果缓存为空显示"生成"，如果不为空显示"重新生成"
+            btn_label = "⚡ 立即生成报告" if st.session_state.ai_report_cache is None else "🔄 重新生成报告"
+            generate_clicked = st.button(btn_label, type="primary")
+            
+        with btn_col2:
+            # 只有在有缓存时，才显示清除缓存的按钮
+            if st.session_state.ai_report_cache is not None:
+                if st.button("🗑️ 清除当前缓存"):
+                    st.session_state.ai_report_cache = None
+                    st.rerun() # 强制刷新页面
+
+        # 3. 处理按钮点击逻辑 (仅在此处消耗 Token)
+        if generate_clicked:
             if not YOUR_GEMINI_API_KEY:
                 st.error("未配置 API Key，无法呼叫 AI 大模型。")
             else:
                 with st.spinner('AI 正在交叉验证数据，生成高管级汇报纪要...'):
                     report_content = get_zeus_style_insight(gemini_model, df)
-                    st.success("报告生成完毕")
-                    # 已修复深色模式看不见文字的问题
-                    st.markdown(f"<div style='background-color: rgba(128, 128, 128, 0.1); padding: 25px; border-radius: 10px; border: 1px solid rgba(128, 128, 128, 0.2);'>{report_content}</div>", unsafe_allow_html=True)
+                    
+                    # 检查是否是 API 报错，如果不包含报错信息，则写入缓存
+                    if "AI 分析时出错" not in report_content:
+                        st.session_state.ai_report_cache = report_content
+                        st.success("✅ 报告生成完毕，已自动存入本地缓存！")
+                    else:
+                        st.error(report_content)
+
+        # 4. 独立的数据渲染层 (脱离按钮点击事件，只要缓存有数据就始终显示)
+        if st.session_state.ai_report_cache:
+            st.markdown(
+                f"<div style='background-color: rgba(128, 128, 128, 0.1); padding: 25px; border-radius: 10px; border: 1px solid rgba(128, 128, 128, 0.2);'>"
+                f"{st.session_state.ai_report_cache}"
+                f"</div>", 
+                unsafe_allow_html=True
+            )
+        else:
+            st.info("👆 点击上方按钮，消耗 API Token 生成诊断报告。生成后将自动缓存，不受页面筛选刷新影响。")
+
+        
+        # # --- 模块 3: 🤖 AI 深度洞察与战略规划 ---
+        # st.markdown('<div class="section-title">🤖 AI 深度洞察与战略建议</div>', unsafe_allow_html=True)
+        
+        # # ⚠️ 注意：这里依然保留了按钮触发，避免每次刷新网页都耗费 API Token
+        # if st.button("⚡ 立即生成专家级体检报告", type="primary"):
+        #     if not YOUR_GEMINI_API_KEY:
+        #         st.error("未配置 API Key，无法呼叫 AI 大模型。")
+        #     else:
+        #         with st.spinner('AI 正在交叉验证数据，生成高管级汇报纪要...'):
+        #             report_content = get_zeus_style_insight(gemini_model, df)
+        #             st.success("报告生成完毕")
+        #             # 已修复深色模式看不见文字的问题
+        #             st.markdown(f"<div style='background-color: rgba(128, 128, 128, 0.1); padding: 25px; border-radius: 10px; border: 1px solid rgba(128, 128, 128, 0.2);'>{report_content}</div>", unsafe_allow_html=True)
 # --- 模块 4: 词云辅助 (已取消折叠) ---
         st.markdown('<div class="section-title">👁️ 原始文本语义聚类 (词云)</div>', unsafe_allow_html=True)
         
